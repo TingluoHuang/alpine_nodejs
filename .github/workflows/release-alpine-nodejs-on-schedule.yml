@@ -36,16 +36,14 @@ jobs:
           fi
         done
         
-        # Create a properly formatted JSON array for the matrix
-        JSON_ARRAY=$(printf '%s\n' "${LATEST_VERSIONS[@]}" | jq -R . | jq -s .)
-        echo "JSON array: $JSON_ARRAY"
-        
-        # Create valid JSON object for GitHub Actions matrix format
-        MATRIX_JSON="{\"node_version\":$JSON_ARRAY}"
+        # Create properly escaped JSON for GitHub Actions
+        MATRIX_JSON=$(jq -c -n --argjson versions "$(printf '%s\n' "${LATEST_VERSIONS[@]}" | jq -R . | jq -s .)" '{"node_version":$versions}')
         echo "Matrix JSON: $MATRIX_JSON"
         
-        # Set output
-        echo "versions=$MATRIX_JSON" >> $GITHUB_OUTPUT
+        # Setting output with proper delimiter for multiline values
+        echo "versions<<EOF" >> $GITHUB_OUTPUT
+        echo "$MATRIX_JSON" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
   
   build_release:
     name: Build and Release Node.js
