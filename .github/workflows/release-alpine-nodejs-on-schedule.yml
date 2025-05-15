@@ -65,6 +65,8 @@ jobs:
     strategy: 
       matrix: ${{ fromJSON(needs.get_versions.outputs.versions) }}
     uses: ./.github/workflows/build-release-alpine-nodejs.yml
+    permissions: 
+      contents: write
     with:
       NodeVersion: ${{ matrix.node_version }}
 
