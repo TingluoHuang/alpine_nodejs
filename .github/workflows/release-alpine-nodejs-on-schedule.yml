@@ -31,8 +31,20 @@ jobs:
                   jq -r "[.[] | select(.version | startswith(\"$VERSION.\"))] | sort_by(.date) | reverse | .[0].version")
           
           if [ -n "$LATEST" ]; then
-            LATEST_VERSIONS+=("$LATEST")
             echo "Found latest $VERSION: $LATEST"
+
+            # Check if this version already exists in GitHub releases
+            # Using the GitHub API to check if the tag/release exists
+            RELEASE_EXISTS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                           "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${LATEST}" | \
+                           jq -r '.id != null')
+            
+            if [ "$RELEASE_EXISTS" == "true" ]; then
+              echo "Release for $LATEST already exists - skipping"
+            else
+              echo "Release for $LATEST does not exist - will build"
+              LATEST_VERSIONS+=("$LATEST")
+            fi
           else
             echo "No version found for $VERSION"
           fi
