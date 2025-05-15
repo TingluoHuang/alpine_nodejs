@@ -1,0 +1,50 @@
+name: Build and Release Alpine Node.js on Schedule
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Every Sunday at midnight
+
+jobs:
+  get_versions:
+    name: Find versions to build and release
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Find latest versions from each major version
+      id: set-matrix
+      run: |
+        # Read major versions from versions.json
+        MAJOR_VERSIONS=$(jq -r '.[]' versions.json)
+        
+        # Initialize array to store latest versions
+        LATEST_VERSIONS=()
+        
+        # For each major version, find the latest release
+        for VERSION in $MAJOR_VERSIONS; do
+          # Get latest release for this major version
+          LATEST=$(curl -s "https://nodejs.org/dist/index.json" | \
+                  jq -r "[.[] | select(.version | startswith(\"$VERSION.\"))] | sort_by(.date) | reverse | .[0].version")
+          
+          if [ -n "$LATEST" ]; then
+            LATEST_VERSIONS+=("$LATEST")
+            echo "Found latest $VERSION: $LATEST"
+          else
+            echo "No version found for $VERSION"
+          fi
+        done
+        
+        # Create JSON matrix
+        echo "versions=$(jq -n --argjson versions "$(printf '%s\n' "${LATEST_VERSIONS[@]}" | jq -R . | jq -s .)" '{"node_version":$versions}')" >> $GITHUB_OUTPUT
+  
+  build_release:
+    name: Build and Release Node.js
+    needs: get_versions
+    strategy: 
+      matrix: ${{ fromJSON(needs.get_versions.outputs.versions) }}
+    uses: ./.github/workflows/build-release-alpine-nodejs.yml
+    with:
+      NodeVersion: ${{ matrix.node_version }}
+
+    
