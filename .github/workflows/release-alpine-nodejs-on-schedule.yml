@@ -9,6 +9,8 @@ on:
 
 jobs:
   get_versions:
+    outputs:
+      versions: ${{ steps.set-matrix.outputs.versions }}
     name: Find versions to build and release
     runs-on: ubuntu-latest
     steps:
